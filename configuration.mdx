@@ -1,0 +1,276 @@
+---
+title: "Configure PHP, Database, and Drupal Recipes in Lando"
+description: "Set PHP version, Composer, web server, database backend, Drush, xdebug, webroot, and custom config file overrides for any Lando Drupal recipe."
+---
+
+The Lando Drupal recipes ship with sensible defaults so your site starts working immediately, but every option is configurable from your `.lando.yml`. This page covers all available `config` keys, their default values, and real examples drawn from the plugin source. Run `lando rebuild` after changing any service configuration for the changes to take effect.
+
+## Full default config block
+
+The block below shows every option and its default value for the `drupal11` recipe. Keys marked `SEE BELOW` are covered in dedicated sections on this page.
+
+```yaml .lando.yml
+recipe: drupal11
+config:
+  php: '8.3'
+  composer_version: '2-latest'
+  via: apache:2.4
+  webroot: .
+  database: mysql:8.0
+  drush: false
+  drush_uri: SEE BELOW
+  xdebug: false
+  config:
+    database: SEE BELOW
+    php: SEE BELOW
+    server: SEE BELOW
+    vhosts: SEE BELOW
+```
+
+<Note>
+`drush: false` is the internal default for Drupal 9, 10, and 11 — these recipes do not install a global Drush. You manage Drush as a site-local Composer dependency instead. See [Using Drush](/tooling#using-drush) for setup instructions.
+</Note>
+
+<Note>
+After making changes to any service configuration, run `lando rebuild` to apply them. A simple `lando restart` is not sufficient.
+</Note>
+
+## Choosing a Drupal version
+
+Set the top-level `recipe` key to the major version of Drupal you are running. Each recipe sets version-appropriate defaults for PHP, the database, and Drush.
+
+```yaml .lando.yml
+recipe: drupal11
+# or: drupal10 | drupal9 | drupal8 | drupal7 | drupal6
+config:
+  php: '8.3'
+```
+
+| Recipe | Default PHP | Default Drush |
+|--------|-------------|---------------|
+| `drupal11` | `8.3` | Disabled — site-local only |
+| `drupal10` | `8.1` | Disabled — site-local only |
+| `drupal9` | `8.0` | Disabled — site-local only |
+| `drupal8` | `7.3` | `8.5.0` (phar binary) |
+| `drupal7` | `7.4` | `8.5.0` (phar binary) |
+| `drupal6` | `5.6` | `8.4.5` (phar binary, pinned) |
+
+<Tip>
+If you initialized your site with `lando init`, the recipe is likely already set correctly. Double-check the major version matches the Drupal codebase you are working with.
+</Tip>
+
+## Choosing a PHP version
+
+Set `config.php` to any version supported by the [Lando PHP service](https://docs.lando.dev/plugins/php/index.html). Consult [Drupal's system requirements](https://www.drupal.org/docs/getting-started/system-requirements) to confirm the PHP version you choose is compatible with your Drupal version.
+
+```yaml .lando.yml
+recipe: drupal11
+config:
+  php: '8.4'
+```
+
+## Choosing a Composer version
+
+Set `config.composer_version` to any version supported by the [Lando PHP service Composer installation](https://docs.lando.dev/plugins/php/config.html#installing-composer). Drupal 9 and above default to the latest Composer 2.x release.
+
+```yaml .lando.yml
+recipe: drupal11
+config:
+  composer_version: '2.10.1'
+```
+
+## Choosing a web server
+
+The recipe defaults to Apache 2.4. You can switch to Nginx. Review the [Apache](https://docs.lando.dev/plugins/apache/index.html) and [Nginx](https://docs.lando.dev/plugins/nginx/index.html) service docs before changing `via`, as the default vhosts and server config files differ between the two.
+
+<Tabs>
+  <Tab title="Apache (default)">
+    ```yaml .lando.yml
+    recipe: drupal11
+    config:
+      via: apache:2.4
+    ```
+  </Tab>
+  <Tab title="Nginx">
+    ```yaml .lando.yml
+    recipe: drupal11
+    config:
+      via: nginx:1.29
+    ```
+  </Tab>
+</Tabs>
+
+## Choosing a database backend
+
+The recipe defaults to MySQL. You can switch to MariaDB or PostgreSQL. Consult [Drupal's system requirements](https://www.drupal.org/docs/getting-started/system-requirements) to verify the database version you choose is supported by your Drupal version.
+
+<Tabs>
+  <Tab title="MySQL (default)">
+    ```yaml .lando.yml
+    recipe: drupal11
+    config:
+      database: mysql:8.0
+    ```
+  </Tab>
+  <Tab title="MariaDB">
+    ```yaml .lando.yml
+    recipe: drupal11
+    config:
+      database: mariadb:10.6
+    ```
+  </Tab>
+  <Tab title="PostgreSQL">
+    ```yaml .lando.yml
+    recipe: drupal11
+    config:
+      database: postgres:16
+    ```
+  </Tab>
+</Tabs>
+
+Default database versions resolved per recipe when you specify only the engine name (e.g. `database: mysql`):
+
+| Recipe | MySQL default | MariaDB default | PostgreSQL default |
+|--------|--------------|-----------------|-------------------|
+| `drupal11` | `8.0` | `10.6` | `16` |
+| `drupal10` | `5.7` | `10.3` | `12` |
+| `drupal9` | `5.7` | `10.3` | `10` |
+
+## Configuring Drush
+
+The `config.drush` key controls which version of Drush is installed. Set it to a Composer version constraint or a specific version string. Set it to `false` to disable Drush entirely.
+
+<Note>
+For Drupal 9, 10, and 11, `drush` is set to `false` internally and Drush is managed as a site-local Composer dependency. See the [Tooling](/tooling) page for setup instructions.
+</Note>
+
+```yaml .lando.yml
+# Drupal 7 — override the default phar version
+recipe: drupal7
+config:
+  drush: '8.5.0'
+```
+
+```yaml .lando.yml
+# Drupal 8 — override the phar version
+recipe: drupal8
+config:
+  drush: '8.5.0'
+```
+
+## Configuring the Drush URI
+
+By default, Lando automatically sets `DRUSH_OPTIONS_URI` to the proxy URL for your web server. Use `config.drush_uri` to override it with a custom URL. This is useful when your site runs on a non-standard hostname or port.
+
+```yaml .lando.yml
+recipe: drupal11
+config:
+  drush_uri: 'https://custom-uri.lndo.site'
+```
+
+<Note>
+You must run `lando rebuild` after changing `drush_uri` for the environment variable to update inside the container.
+</Note>
+
+## Enabling xdebug
+
+Toggle xdebug with `config.xdebug`. Setting it to `true` enables and configures the PHP xdebug extension; `false` disables it. For full xdebug configuration options, see the [Lando PHP service documentation](https://docs.lando.dev/plugins/php/config.html#using-xdebug).
+
+```yaml .lando.yml
+recipe: drupal11
+config:
+  xdebug: true
+```
+
+## Setting the webroot
+
+Set `config.webroot` to the path of your Drupal document root, relative to your project root. Drupal 11 defaults to `public`; older recipes default to `.` (the project root).
+
+```yaml .lando.yml
+recipe: drupal11
+config:
+  webroot: public
+```
+
+## Using custom config files
+
+You can override the default PHP, web server, and database config files with your own. Files must exist inside your application directory and are expressed as paths relative to your project root.
+
+The `vhosts` and `server` keys apply to Apache or Nginx respectively, depending on how you set `via`. Review the [Apache config](https://docs.lando.dev/plugins/apache/config.html) and [Nginx config](https://docs.lando.dev/plugins/nginx/config.html) docs before supplying custom vhosts or server files.
+
+**Example project layout**
+
+```bash
+./
+|-- config
+|   |-- default.conf
+|   |-- my-custom.cnf
+|   |-- php.ini
+|   |-- server.conf
+|-- index.php
+|-- .lando.yml
+```
+
+**Landofile using custom config**
+
+```yaml .lando.yml
+recipe: drupal11
+config:
+  config:
+    database: config/my-custom.cnf
+    php: config/php.ini
+    server: config/server.conf
+    vhosts: config/default.conf
+```
+
+<AccordionGroup>
+  <Accordion title="Default php.ini settings (drupal11)">
+    The plugin ships this `php.ini` for Drupal 11 by default:
+
+    ```ini config/php.ini
+    [PHP]
+    short_open_tag = Off
+    output_buffering = 4096
+    realpath_cache_size = "800K"
+    realpath_cache_ttl = "86400"
+    max_execution_time = 91
+    max_input_time = 901
+    max_input_vars = 10000
+    memory_limit = ${PHP_MEMORY_LIMIT}
+    upload_max_filesize = 100M
+    post_max_size = 100M
+    error_reporting = E_ALL & ~E_DEPRECATED
+    display_errors = on
+    log_errors = on
+
+    [Date]
+    date.timezone = "UTC"
+
+    ; Xdebug
+    xdebug.max_nesting_level = 512
+    xdebug.mode = ${XDEBUG_MODE}
+    ```
+  </Accordion>
+  <Accordion title="Default MySQL 8 config (mysql8.cnf)">
+    The plugin ships this `mysql8.cnf` for MySQL 8.x databases:
+
+    ```ini config/mysql8.cnf
+    [server]
+    character_set_server = utf8mb4
+    collation_server = utf8mb4_general_ci
+    sql_mode = ONLY_FULL_GROUP_BY,TRADITIONAL
+    max_connections = 500
+    max_allowed_packet = 32M
+    innodb_buffer_pool_size = 384M
+    innodb_file_per_table = 1
+    innodb_flush_log_at_trx_commit = 0
+
+    [mysqld-8.4]
+    mysql_native_password=ON
+
+    [client]
+    default_character_set=utf8mb4
+    max_allowed_packet = 64M
+    ```
+  </Accordion>
+</AccordionGroup>

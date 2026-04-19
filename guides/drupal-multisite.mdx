@@ -1,0 +1,124 @@
+---
+title: "Run Drupal Multisite from a Single Codebase in Lando"
+description: Configure Lando to host multiple Drupal sites from a single codebase, including proxy setup, per-site database settings, and Drush aliases.
+---
+
+Drupal multisite lets you serve multiple Drupal installations from a shared codebase, which is common in university and enterprise environments where teams want to share themes and modules across many sites. Getting it running locally with Lando requires three coordinated changes: proxy configuration in `.lando.yml`, database connection settings in each subsite's `settings.local.php`, and Drush aliases so Drush can resolve each subsite.
+
+<Steps>
+  <Step title="Configure .lando.yml">
+    Add a proxy entry for each subsite under the `appserver` key, then define a dedicated MySQL service for each one. The example below sets up two subsites, `site1` and `site2`, each with their own database container and a unique forwarded port for direct database access:
+
+    ```yaml
+    proxy:
+      appserver:
+        - site1.lndo.site
+        - site2.lndo.site
+    services:
+      site1:
+        type: mysql:5.7
+        portforward: 33068
+        config:
+          confd: .lando/mysql/conf.d
+      site2:
+        type: mysql:5.7
+        portforward: 33069
+        config:
+          confd: .lando/mysql/conf.d
+    ```
+  </Step>
+
+  <Step title="Configure each subsite's settings.local.php">
+    Each subsite needs a `settings.local.php` that points to its own Lando database service. The standard Lando database credentials (`mysql` / `password`) apply, but the `host` key must be set to the service name you defined in `.lando.yml`.
+
+    For example, in `docroot/sites/site1/settings/settings.local.php`:
+
+    ```php
+    /**
+     * Database configuration.
+     */
+    $databases['default'] = array (
+      'default' => array (
+        'driver' => 'mysql',
+        'database' => 'database',
+        'username' => 'mysql',
+        'password' => 'password',
+        'prefix' => '',
+        'port' => 3306,
+      )
+    );
+    // The only thing to add from the out-of-the-box Lando db is the special host for each subsite
+    $databases['default']['default']['host'] = 'site1';
+    ```
+
+    Repeat this for each subsite, changing the `host` value to match the corresponding service name.
+
+    <Warning>
+      **Acquia hosting requires an extra step.**
+
+      If you deploy to Acquia and use Drush 9, you must add `$_SERVER['PWD']=DRUPAL_ROOT` to prevent Drush from blocking superglobals. Update your main `sites/default/settings.php` to load the local settings file only outside Acquia's environment:
+
+      ```php
+      if (!key_exists('AH_SITE_ENVIRONMENT', $_ENV)) {
+        $environment_settings = __DIR__  . '/settings/settings.local.php';
+        if (file_exists($environment_settings)) {
+          include $environment_settings;
+        }
+      }
+      // Temporary fix because drush9 blocks superglobals
+      $_SERVER['PWD']=DRUPAL_ROOT;
+      ```
+    </Warning>
+  </Step>
+
+  <Step title="Define Drush aliases for each subsite">
+    Create a Drush alias file so Drush can locate each subsite for both local and remote environments. In this example `docroot` is the Drupal root. Create `site_root/drush/sites/site-aliases/site1.site.yml`:
+
+    ```yaml
+    local:
+      uri: 'https://site1.lndo.site'
+      paths:
+      - files: /path_to_your_local_site/site_root/docroot'
+    dev:
+      host: 'site1dev.ssh.prod.acquia-sites.com'
+      user: 'site1.dev'
+      root: '/var/www/html/site1.dev/docroot'
+      uri: 'site1dev.prod.acquia-sites.com'
+      ac-site: 'site1'
+      ac-env: 'dev'
+      ac-realm: 'prod'
+      paths:
+        drush-script: 'drush8'
+    test:
+      root: '/var/www/html/site1.test/docroot'
+      ac-site: 'site1'
+      ac-env: 'test'
+      ac-realm: 'prod'
+      uri: 'site1stg.prod.acquia-sites.com'
+      host: 'site1stg.ssh.prod.acquia-sites.com'
+      user: 'site1.test'
+      paths:
+        drush-script: 'drush8'
+    prod:
+      root: '/var/www/html/site1.prod/docroot'
+      ac-site: 'site1'
+      ac-env: 'prod'
+      ac-realm: 'prod'
+      uri: 'site1.prod.acquia-sites.com'
+      host: 'site1.ssh.prod.acquia-sites.com'
+      user: 'site1.prod'
+      paths:
+        drush-script: 'drush8'
+    ```
+
+    <Note>
+      The example above pins `drush-script: 'drush8'` for the remote environments. This is a workaround for known compatibility issues with Drush 9 on Acquia Cloud and is unrelated to your local Lando setup.
+    </Note>
+
+    If you use Drupal Console instead of Drush, pass the URI explicitly on each command:
+
+    ```bash
+    drupal --uri=http://site1.lndo.site cr all
+    ```
+  </Step>
+</Steps>

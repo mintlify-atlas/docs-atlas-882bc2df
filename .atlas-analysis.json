@@ -1,0 +1,93 @@
+{
+  "projectType": "framework",
+  "projectName": "Lando Drupal Plugin",
+  "projectDescription": "The official Lando plugin that provides a tight integration with Drupal, enabling local development environments with configurable PHP, webserver, database, Drush, Composer, and xdebug support.",
+  "theme": "aspen",
+  "primaryColor": "#dc4494",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "getting-started",
+              "installation"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration",
+              "tooling",
+              "database"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/drupal-cms",
+              "guides/drupal-multisite",
+              "guides/landoify-drupal7"
+            ]
+          },
+          {
+            "group": "Legacy Versions",
+            "pages": [
+              "legacy/drupal-8",
+              "legacy/drupal-7",
+              "legacy/drupal-6"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "development",
+              "support"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Supports Drupal 6, 7, 8, 9, 10, and 11 via dedicated recipes",
+    "Configurable PHP version from 5.3 to 8.4+",
+    "Switchable web server: Apache or Nginx",
+    "Multiple database backends: MySQL, MariaDB, PostgreSQL",
+    "Built-in Drush and Composer tooling",
+    "xdebug support via simple config toggle",
+    "Database import/export helpers (lando db-import / lando db-export)",
+    "Custom config file overrides for PHP, server, vhosts, and database"
+  ],
+  "publicApiSurface": [
+    "recipe: drupal6",
+    "recipe: drupal7",
+    "recipe: drupal8",
+    "recipe: drupal9",
+    "recipe: drupal10",
+    "recipe: drupal11",
+    "config.php — PHP version selection",
+    "config.composer_version — Composer version selection",
+    "config.via — web server (apache or nginx)",
+    "config.database — database backend and version",
+    "config.webroot — configurable web root path",
+    "config.drush — Drush version or false to disable",
+    "config.drush_uri — custom Drush URI",
+    "config.xdebug — enable/disable xdebug",
+    "config.config.php — custom php.ini path",
+    "config.config.server — custom server config path",
+    "config.config.vhosts — custom vhosts config path",
+    "config.config.database — custom database config path",
+    "lando composer — run Composer commands",
+    "lando drush — run Drush commands",
+    "lando php — run PHP commands",
+    "lando mysql / lando mariadb / lando psql — database shell",
+    "lando db-import <file> — import a database dump",
+    "lando db-export [file] — export the database"
+  ]
+}

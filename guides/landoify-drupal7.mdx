@@ -1,0 +1,68 @@
+---
+title: "Add Lando to an Existing Drupal 7 Codebase Quickly"
+description: Add a .lando.yml file to any existing Drupal 7 codebase so your whole team can spin up an identical local environment with a single command.
+---
+
+If your team already has a Drupal 7 application in version control and you want to standardize local development, you do not need to migrate or rebuild the project. You only need to add a `.lando.yml` configuration file to the repository root and commit it. From that point on, anyone on the team can run `lando start` to get a fully configured local environment that matches your stack.
+
+<Steps>
+  <Step title="Navigate to your project directory">
+    Open a terminal and change into the directory that contains your Drupal 7 project:
+
+    ```bash
+    cd PATH/TO/YOUR/DRUPAL7/APP
+    ```
+  </Step>
+
+  <Step title="Run lando init">
+    Run the `lando init` command to generate a `.lando.yml` file interactively:
+
+    ```bash
+    lando init
+    ```
+
+    Lando will ask a series of questions:
+
+    1. **From where should we get your app's codebase?** — Select `current working directory`.
+    2. **What recipe do you want to use?** — Select `drupal7`.
+    3. **Where is your webroot relative to the init destination?** — Press Enter if your Drupal files are in the current directory.
+    4. **What do you want to call this app?** — Type any name you like, for example `myapp`.
+
+    <Tip>
+      If your Drupal code lives in a subdirectory such as `web/` or `docroot/`, enter that path at the webroot prompt instead of pressing Enter.
+    </Tip>
+  </Step>
+
+  <Step title="Review the generated .lando.yml">
+    After `lando init` completes, it writes a `.lando.yml` file to your project root. For a `drupal7` recipe with the webroot set to the current directory, it will look like this:
+
+    ```yaml
+    name: myapp
+    recipe: drupal7
+    config:
+      webroot: .
+    ```
+
+    Commit this file to your repository so teammates can use it too.
+  </Step>
+
+  <Step title="Start the environment">
+    Boot the Lando environment. On the first run, Lando downloads and builds all required containers:
+
+    ```bash
+    lando start
+    ```
+
+    When startup completes, Lando prints a list of URLs. Copy any one of them and open it in a browser to see your Drupal 7 site running locally.
+  </Step>
+
+  <Step title="Get URLs and connection info at any time">
+    If you close the terminal or clear the screen, you can retrieve the site URLs and database connection details whenever you need them:
+
+    ```bash
+    lando info
+    ```
+
+    The output includes the appserver URLs, database host, port, credentials, and other service details that are useful when configuring `settings.php` or connecting a database client.
+  </Step>
+</Steps>

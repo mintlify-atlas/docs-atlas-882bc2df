@@ -1,0 +1,144 @@
+---
+title: "Installing the Lando Drupal Plugin on Your Machine"
+description: "Install Lando and the @lando/drupal plugin via lando plugin-add or Docker, verify the plugin is loaded, and set up a local clone for development."
+---
+
+This page covers how to install the `@lando/drupal` plugin so you can use Drupal recipes in your Lando environments. If you installed Lando through one of the standard distribution packages, the plugin is almost certainly already included. The steps below also show how to install a specific version, upgrade to the latest release, or set up the plugin in development mode from a local clone.
+
+## Step 1: Install Lando
+
+The `@lando/drupal` plugin requires Lando to be installed on your machine. Follow the [official Lando installation guide](https://docs.lando.dev/getting-started/installation.html) for your operating system, then confirm Lando is working:
+
+```bash
+lando version
+```
+
+## Step 2: Check whether the plugin is already installed
+
+Most Lando 3 installation packages bundle `@lando/drupal` by default. Verify it is present before installing manually:
+
+```bash
+lando version --component @lando/drupal
+```
+
+If this returns a version number, you are ready to go. If it returns an error or prints nothing, continue to step 3.
+
+You can also list all loaded plugins and their paths:
+
+```bash
+lando config --path plugins
+```
+
+Look for `@lando/drupal` in the output. The path shown tells you where Lando is loading the plugin from.
+
+## Step 3: Install or update the plugin
+
+Choose the method that matches your Lando version and workflow.
+
+<CodeGroup>
+
+```bash lando 3.21+
+lando plugin-add @lando/drupal
+```
+
+```bash Docker
+# Ensure you have a global plugins directory
+mkdir -p ~/.lando/plugins
+
+# Install the plugin
+# To install a specific version, change "@lando/drupal" to e.g. "@lando/drupal@1.15.0"
+docker run --rm -it -v ${HOME}/.lando/plugins:/plugins -w /tmp node:20-alpine sh -c \
+  "npm init -y \
+  && npm install @lando/drupal --production --flat --no-default-rc --no-lockfile --link-duplicates \
+  && npm install --production --cwd /tmp/node_modules/@lando/drupal \
+  && mkdir -p /plugins/@lando \
+  && mv --force /tmp/node_modules/@lando/drupal /plugins/@lando/drupal"
+
+# Rebuild the plugin cache
+lando --clear
+```
+
+</CodeGroup>
+
+<Note>
+The `hyperdrive install @lando/drupal` pathway is not yet functional. Use one of the methods above.
+</Note>
+
+## Step 4: Verify the installation
+
+After installing, confirm the plugin is loaded successfully by checking the plugins list:
+
+```bash
+lando config --path plugins
+```
+
+Look for `@lando/drupal` in the output. The path shown tells you where Lando is loading the plugin from. You can also run:
+
+```bash
+lando version --component @lando/drupal
+```
+
+## Version compatibility
+
+The `@lando/drupal` plugin requires **Node 20 or later** when running it outside of Lando (for example, during local plugin development or testing). The `engines` field in `package.json` enforces this:
+
+```json package.json
+{
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+```
+
+When the plugin runs inside Lando's managed environment, Node version management is handled automatically.
+
+## Development mode: using a local clone
+
+If you are contributing to the plugin or testing an unreleased change, you can point Lando at a local clone instead of the published npm package.
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/lando/drupal.git && cd drupal
+    ```
+  </Step>
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
+  <Step title="Point your Landofile at the local clone">
+    Add a `plugins` key to the `.lando.yml` of the project where you want to test your changes:
+
+    ```yaml .lando.yml
+    name: my-drupal-site
+    recipe: drupal11
+    plugins:
+      '@lando/drupal': /path/to/your/local/drupal/clone
+    ```
+
+    Replace `/path/to/your/local/drupal/clone` with the absolute path to the directory where you cloned the repo.
+  </Step>
+  <Step title="Start the environment">
+    ```bash
+    lando start
+    ```
+
+    Lando will load the plugin from the local path instead of the globally installed version.
+  </Step>
+</Steps>
+
+<Tip>
+Run `lando --clear` after making changes to the plugin code to ensure Lando picks up the latest version and does not serve a cached copy.
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Getting started" icon="rocket" href="/getting-started">
+    Use the quick-start commands to create your first Drupal site with Lando.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/configuration">
+    Customize PHP version, database backend, web server, and more.
+  </Card>
+</CardGroup>

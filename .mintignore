@@ -5,3 +5,10 @@
 # Draft content
 drafts/
 *.draft.mdx
+
+# Starter kit boilerplate — not part of this documentation site
+essentials/
+ai-tools/
+api-reference/
+quickstart.mdx
+snippets/

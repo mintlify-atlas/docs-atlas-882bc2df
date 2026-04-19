@@ -1,94 +1,183 @@
 ---
-title: 'Development'
-description: 'Preview changes locally to update your docs'
+title: 'Contribute Code and Tests to the Lando Drupal Plugin'
+description: 'Set up a local development environment, run unit and end-to-end tests, write documentation, and release new versions of the Lando Drupal plugin.'
 ---
 
-<Info>
-  **Prerequisites**:
-  - Node.js version 19 or higher
-  - A docs repository with a `docs.json` file
-</Info>
+This page covers everything you need to contribute to the Lando Drupal plugin — from cloning the repository and running tests to writing docs and cutting a release.
 
-Follow these steps to install and run Mintlify on your operating system.
+## Requirements
+
+Before you start, make sure you have the following installed:
+
+- [Lando 3.21.0+](https://docs.lando.dev/getting-started/installation.html) — preferably [installed from source](https://docs.lando.dev/install/source.html)
+- [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+- [Node 20+](https://nodejs.org/dist/latest-v20.x/)
+
+## Setup
 
 <Steps>
-<Step title="Install the Mintlify CLI">
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/lando/drupal.git && cd drupal
+    ```
+  </Step>
 
-```bash
-npm i -g mint
-```
-</Step>
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+  </Step>
 
-<Step title="Preview locally">
+  <Step title="Point a Lando app at your local clone">
+    Every app in the `examples/` folder includes the following in its Landofile. This tells Lando to use your local clone of the plugin instead of the globally installed version.
 
-Navigate to your docs directory where your `docs.json` file is located, and run the following command:
+    ```yaml
+    plugins:
+      "@lando/drupal": ../..
+    ```
 
-```bash
-mint dev
-```
+    You should always develop against apps in `examples/` and ensure each one contains this config. If you have an existing Lando app you want to test against, you can temporarily add the same override using an absolute path:
 
-A local preview of your documentation will be available at `http://localhost:3000`.
+    ```yaml
+    plugins:
+      "@lando/drupal": /path/to/plugin
+    ```
 
-</Step>
+    This isolates your changes from other apps that rely on the stable global version of the plugin.
+  </Step>
 </Steps>
 
-## Custom ports
+## Working with examples
 
-By default, Mintlify uses port 3000. You can customize the port Mintlify runs on by using the `--port` flag. For example, to run Mintlify on port 3333, use this command:
+The `examples/` folder contains working, tested Lando apps that cover the plugin's features. Use these apps when developing — create new ones as needed, and always add or update tests to match your changes. See [Leia tests](#leia-tests) below for details.
 
-```bash
-mint dev --port 3333
+## Documentation
+
+To work on the documentation locally, use these commands after cloning and running `npm install`:
+
+<CodeGroup>
+
+```bash Start dev server
+npm run docs:dev
 ```
 
-If you attempt to run Mintlify on a port that's already in use, it will use the next available port:
-
-```md
-Port 3000 is already in use. Trying 3001 instead.
+```bash Build docs
+npm run docs:build
 ```
 
-## Mintlify versions
-
-Please note that each CLI release is associated with a specific version of Mintlify. If your local preview does not align with the production version, please update the CLI:
-
-```bash
-npm mint update
+```bash Preview built docs
+npm run docs:preview
 ```
 
-## Validating links
+</CodeGroup>
 
-The CLI can assist with validating links in your documentation. To identify any broken links, use the following command:
-
-```bash
-mint broken-links
-```
-
-## Deployment
-
-If the deployment is successful, you should see the following:
-
-<Frame>
-  <img src="/images/checks-passed.png" alt="Screenshot of a deployment confirmation message that says All checks have passed." style={{ borderRadius: '0.5rem' }} />
-</Frame>
-
-## Code formatting
-
-We suggest using extensions on your IDE to recognize and format MDX. If you're a VSCode user, consider the [MDX VSCode extension](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx) for syntax highlighting, and [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) for code formatting.
-
-## Troubleshooting
+## Testing
 
 <AccordionGroup>
-  <Accordion title='Error: Could not load the "sharp" module using the darwin-arm64 runtime'>
+  <Accordion title="Unit tests">
+    Place unit-testable code in `utils/` and the corresponding test file in `test/` using the naming convention `FILE-BEING-TESTED.spec.js`:
 
-    This may be due to an outdated version of node. Try the following:
-    1. Remove the currently-installed version of the CLI: `npm remove -g mint`
-    2. Upgrade to Node v19 or higher.
-    3. Reinstall the CLI: `npm i -g mint`
+    ```
+    ./
+    |-- utils
+        |-- stuff.js
+    |-- test
+        |-- stuff.spec.js
+    ```
+
+    Run all unit tests with:
+
+    ```bash
+    npm run test:unit
+    ```
   </Accordion>
 
-  <Accordion title="Issue: Encountering an unknown error">
-  
-    Solution: Go to the root of your device and delete the `~/.mintlify` folder. Then run `mint dev` again.
+  <Accordion title="Leia end-to-end tests">
+    End-to-end tests use [Leia](https://github.com/lando/leia), a testing framework built for Lando that treats commented shell commands in Markdown files as test cases. The READMEs in `examples/` are all Leia test files.
+
+    A Leia test file looks like this:
+
+    ````md
+    ## Start up tests
+
+    ```bash
+    # Should start up successfully
+    lando start
+    ```
+
+    ## Verification commands
+
+    ```bash
+    # Should be able to connect to all mariadb relationships
+    lando mariadb main -e "show tables;"
+
+    # Should do something else
+    lando exec appserver -- some-command
+    ```
+
+    ## Destroy tests
+
+    ```bash
+    # Should be able to destroy our app
+    lando destroy -y
+    ```
+    ````
+
+    The `Start up tests` section runs before the main tests. `Verification commands` is required and contains the body of tests. `Destroy tests` handles cleanup.
+
+    Run all Leia tests or a single example:
+
+    ```bash
+    # Run all end-to-end tests (this will take a while)
+    npm run test:leia
+
+    # Run the tests for a single example
+    npx leia examples/mariadb-10.2/README.md -c 'Destroy tests'
+    ```
+  </Accordion>
+
+  <Accordion title="Adding tests to GitHub Actions">
+    If you create new testable examples, you need to register them in a GitHub Actions workflow so they run on pull requests.
+
+    Either add your new test to an existing workflow that fits, or copy an existing workflow file and update the `name` key and filename to something descriptive.
+
+    Then add your example path to `jobs.leia-tests.strategy.matrix.leia-test` in the workflow:
+
+    ```yaml
+    jobs:
+      leia-tests:
+        strategy:
+          fail-fast: false
+          matrix:
+            leia-test:
+              - examples/drupal10
+              - examples/drupal11
+              - examples/drupal12
+    ```
+
+    Once your pull request is open, the new tests will run automatically.
   </Accordion>
 </AccordionGroup>
 
-Curious about what changed in the latest CLI version? Check out the [CLI changelog](https://www.npmjs.com/package/mintlify?activeTab=versions).
+## Releasing
+
+To publish a new version to npm, [create a release on GitHub](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository). The release workflow automatically prepares and deploys the package. Use a semantic version as the release title (e.g. `v0.8.0`).
+
+- A standard release publishes to npm with the `latest` tag.
+- A **pre-release** publishes to npm with the `edge` tag.
+
+<Note>
+  Toggling the pre-release checkbox after a release is created does not trigger a new publish or promote `edge` to `latest`. To move a release to `latest`, create a new release without the pre-release option checked.
+</Note>
+
+```bash
+# Install the latest stable release
+npm install @lando/drupal
+
+# Install the latest pre-release
+npm install @lando/drupal@edge
+```
+
+## Contributing
+
+Follow [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow) when contributing code: create a branch, commit your changes, open a pull request, and request a review.

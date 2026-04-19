@@ -1,0 +1,223 @@
+---
+title: "Get Started: Run Drupal Locally with Lando Recipes"
+description: "Spin up a new Drupal 9, 10, or 11 site with Lando in a few commands, or Landoify an existing project by initializing a .lando.yml in the repo root."
+---
+
+This page walks you through the prerequisites for using the Lando Drupal plugin and shows you the exact commands to create a fresh Drupal site — or to add Lando to a project you already have on disk. Commands are sourced directly from the plugin's quick-start examples and work for Drupal 11, Drupal CMS, Drupal 10, and Drupal 9.
+
+## Prerequisites
+
+Before you begin, make sure you have the following:
+
+1. **Lando installed** — see the [Lando installation guide](https://docs.lando.dev/getting-started/installation.html) if you have not done this yet.
+2. **Basic Lando familiarity** — read the [Lando CLI docs](https://docs.lando.dev/cli/) to understand `lando start`, `lando stop`, and `lando info`.
+3. **A Landofile** — if you are starting from scratch, the commands below create one. If you have an existing site, you will [initialize one](#landoifying-an-existing-site).
+
+## Quick start
+
+The steps below spin up a brand-new Drupal site using Lando's `init` command, then install Drupal via Composer and Drush inside the container. Pick the tab for your target Drupal version.
+
+<Tabs>
+  <Tab title="Drupal 11">
+    <Steps>
+      <Step title="Create a directory and initialize the recipe">
+        ```bash
+        mkdir my-first-drupal11-app \
+          && cd my-first-drupal11-app \
+          && lando init \
+            --source cwd \
+            --recipe drupal11 \
+            --webroot web \
+            --name my-first-drupal11-app
+        ```
+      </Step>
+      <Step title="Start the environment">
+        ```bash
+        lando start
+        ```
+      </Step>
+      <Step title="Create the Drupal 11 project via Composer">
+        ```bash
+        lando composer create-project drupal/recommended-project:11.x tmp && cp -r tmp/. . && rm -rf tmp
+        ```
+        <Tip>
+          If Composer times out on slower machines, run `lando composer config --global process-timeout 2000` first, then re-run the command above.
+        </Tip>
+      </Step>
+      <Step title="Install a site-local Drush">
+        ```bash
+        lando composer require drush/drush
+        ```
+      </Step>
+      <Step title="Install Drupal">
+        ```bash
+        lando drush site:install --db-url=mysql://drupal11:drupal11@database/drupal11 -y
+        ```
+      </Step>
+      <Step title="Inspect your running environment">
+        ```bash
+        lando info
+        ```
+        This prints service URLs, database credentials, and other details about the running app.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Drupal CMS">
+    <Steps>
+      <Step title="Create a directory and initialize the recipe">
+        ```bash
+        mkdir my-drupalcms-app \
+          && cd my-drupalcms-app \
+          && lando init \
+            --source cwd \
+            --recipe drupal11 \
+            --webroot web \
+            --name my-drupalcms-app
+        ```
+        <Note>
+          Drupal CMS is built on the `drupal11` recipe. You still use `--recipe drupal11` here.
+        </Note>
+      </Step>
+      <Step title="Start the environment">
+        ```bash
+        lando start
+        ```
+      </Step>
+      <Step title="Create the Drupal CMS project via Composer">
+        ```bash
+        lando composer create-project drupal/cms tmp && cp -r tmp/. . && rm -rf tmp
+        ```
+      </Step>
+      <Step title="Install Drupal CMS">
+        ```bash
+        lando drush site:install recipes/drupal_cms_starter --db-url=mysql://drupal11:drupal11@database/drupal11 -y
+        ```
+      </Step>
+      <Step title="Inspect your running environment">
+        ```bash
+        lando info
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Drupal 10">
+    <Steps>
+      <Step title="Create a directory and initialize the recipe">
+        ```bash
+        mkdir my-first-drupal10-app \
+          && cd my-first-drupal10-app \
+          && lando init \
+            --source cwd \
+            --recipe drupal10 \
+            --webroot web \
+            --name my-first-drupal10-app
+        ```
+      </Step>
+      <Step title="Start the environment">
+        ```bash
+        lando start
+        ```
+      </Step>
+      <Step title="Create the Drupal 10 project via Composer">
+        ```bash
+        lando composer create-project drupal/recommended-project:10.x tmp && cp -r tmp/. . && rm -rf tmp
+        ```
+        <Tip>
+          If Composer times out, run `lando composer config --global process-timeout 2000` first, then re-run.
+        </Tip>
+      </Step>
+      <Step title="Install a site-local Drush">
+        ```bash
+        lando composer require drush/drush
+        ```
+      </Step>
+      <Step title="Install Drupal">
+        ```bash
+        lando drush site:install --db-url=mysql://drupal10:drupal10@database/drupal10 -y
+        ```
+      </Step>
+      <Step title="Inspect your running environment">
+        ```bash
+        lando info
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="Drupal 9">
+    <Steps>
+      <Step title="Create a directory and initialize the recipe">
+        ```bash
+        mkdir my-first-drupal9-app \
+          && cd my-first-drupal9-app \
+          && lando init \
+            --source cwd \
+            --recipe drupal9 \
+            --webroot web \
+            --name my-first-drupal9-app
+        ```
+      </Step>
+      <Step title="Start the environment">
+        ```bash
+        lando start
+        ```
+      </Step>
+      <Step title="Create the Drupal 9 project via Composer">
+        ```bash
+        lando composer create-project drupal/recommended-project:9.x tmp && cp -r tmp/. . && rm -rf tmp
+        ```
+        <Tip>
+          If Composer times out, run `lando composer config --global process-timeout 2000` first, then re-run.
+        </Tip>
+      </Step>
+      <Step title="Install a site-local Drush">
+        ```bash
+        lando composer require drush/drush
+        ```
+      </Step>
+      <Step title="Install Drupal">
+        ```bash
+        lando drush site:install --db-url=mysql://drupal9:drupal9@database/drupal9 -y
+        ```
+      </Step>
+      <Step title="Inspect your running environment">
+        ```bash
+        lando info
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Landoifying an existing site
+
+If you already have a Drupal codebase on disk, run `lando init` inside the project root to create a `.lando.yml` without starting from scratch:
+
+```bash
+cd /path/to/my/repo
+lando init --source cwd --recipe drupal9
+```
+
+Replace `drupal9` with the recipe that matches your Drupal version (`drupal10`, `drupal11`, etc.). After the file is created, run `lando start` to bring up the environment.
+
+## EOL Drupal versions
+
+<Warning>
+Drupal 8, 7, and 6 are end-of-life and no longer receive security updates from the Drupal project. The Lando recipes for these versions are still available but are provided for legacy use only.
+</Warning>
+
+If you need to work with an older Drupal version, see the legacy documentation:
+
+- [Drupal 8](/legacy/drupal-8)
+- [Drupal 7](/legacy/drupal-7)
+- [Drupal 6](/legacy/drupal-6)
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="sliders" href="/configuration">
+    Customize your PHP version, web server, database backend, and more.
+  </Card>
+  <Card title="Tooling" icon="terminal" href="/tooling">
+    Learn the built-in `lando drush`, `lando composer`, and database shell commands.
+  </Card>
+</CardGroup>

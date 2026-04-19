@@ -1,0 +1,209 @@
+---
+title: "Lando Drupal Tooling: Drush, Composer, and DB Commands"
+description: "Run Drush, Composer, PHP, and database shell commands inside your Lando Drupal environment without installing anything on your host machine."
+---
+
+Every Lando Drupal recipe ships with a set of pre-configured tooling commands that run inside your containerized environment. You never need a global PHP, Composer, or Drush installation on your machine — Lando proxies these commands into the correct service automatically. The exact commands available depend on your database backend; for example, `lando psql` replaces `lando mysql` when you use PostgreSQL.
+
+## Available commands
+
+```bash
+lando composer          Runs composer commands
+lando db-export [file]  Exports database from a service into a file
+lando db-import <file>  Imports a dump file into database service
+lando drush             Runs drush commands
+lando mysql             Drops into a MySQL shell on a database service
+lando php               Runs php commands
+```
+
+<Warning>
+If you are running Drupal 8.4 or later, you must use a [site-local install of Drush](https://www.drush.org/latest/install/). The recipe does not install a global Drush for Drupal 9, 10, or 11. See [Using Drush](#using-drush) below.
+</Warning>
+
+## Quick examples
+
+```bash
+# Run a Drush site install
+lando drush si --db-url=mysql://drupal9:drupal9@database/drupal9 -y
+
+# Run Composer tests
+lando composer test
+
+# Drop into a MySQL shell
+lando mysql
+
+# Check installed PHP extensions
+lando php -m
+```
+
+Run `lando` from inside your app directory to see the full list of available commands for your specific configuration.
+
+## lando composer
+
+Runs Composer inside the `appserver` container. Use it exactly as you would a local `composer` command.
+
+```bash
+# Install project dependencies
+lando composer install
+
+# Require a new package
+lando composer require drush/drush
+
+# Update all dependencies
+lando composer update
+```
+
+## lando php
+
+Runs PHP inside the `appserver` container.
+
+```bash
+# Check the PHP version
+lando php -v
+
+# List installed extensions
+lando php -m
+
+# Run a PHP script
+lando php scripts/my-script.php
+```
+
+## lando mysql / lando mariadb / lando psql
+
+Drops you into an interactive database shell. The available command depends on your configured database backend:
+
+- `lando mysql` — MySQL or MariaDB 10.3 and below
+- `lando mariadb` — MariaDB 10.4 and above
+- `lando psql` — PostgreSQL
+
+```bash
+# MySQL/MariaDB shell
+lando mysql
+
+# PostgreSQL shell
+lando psql
+```
+
+Both commands accept a `--host` (`-h`) flag to target a specific database service if you have more than one.
+
+## lando db-import
+
+Imports a database dump into your database service. Accepts uncompressed `.sql`, gzipped `.sql.gz`, or zipped `.zip` files. The dump file must exist somewhere inside your application directory.
+
+```bash
+# Download a database dump
+curl -fsSL -o database.sql.gz "https://url.to.my.db/database.sql.gz"
+
+# Import the dump
+lando db-import database.sql.gz
+```
+
+Options:
+
+| Flag | Description |
+|------|-------------|
+| `--host` / `-h` | Target database service (default: `database`) |
+| `--no-wipe` | Skip destroying the existing database before importing |
+
+## lando db-export
+
+Exports the database from your database service to a file in your project directory.
+
+```bash
+# Export to a file (creates a timestamped .sql.gz by default)
+lando db-export
+
+# Export to a specific file
+lando db-export my-backup.sql.gz
+
+# Dump to stdout
+lando db-export --stdout
+```
+
+Options:
+
+| Flag | Description |
+|------|-------------|
+| `--host` / `-h` | Source database service (default: `database`) |
+| `--stdout` | Dump database to stdout instead of a file |
+
+## Using Drush
+
+For Drupal 9, 10, and 11, Drush must be installed as a site-local Composer dependency. The recipe does not install a global Drush for these versions.
+
+<Warning>
+As of Drupal 8.4+, a site-local Drush install is required. The recipe will not install Drush globally for Drupal 9, 10, or 11 projects.
+</Warning>
+
+### Installing Drush
+
+Add Drush to your project's `composer.json`:
+
+```bash
+lando composer require drush/drush
+```
+
+Once Drush is listed in `composer.json`, Lando will locate and use it automatically when you run `lando drush`.
+
+### Auto-installing with build steps
+
+Configure a [build step](https://docs.lando.dev/services/lando-3.html#build-steps) so that Composer installs all dependencies — including Drush — automatically on `lando start`:
+
+```yaml .lando.yml
+recipe: drupal9
+services:
+  appserver:
+    build:
+      - composer install
+```
+
+This ensures `drush` is available immediately after `lando start` without any manual steps.
+
+### Overriding the Drush command path
+
+If Composer installs to a non-standard directory, Lando may not find `drush` in the expected `vendor/bin` location. Use [tooling overrides](https://docs.lando.dev/landofile/tooling.html#overriding) to specify the absolute path:
+
+```yaml .lando.yml
+tooling:
+  drush:
+    cmd: /path/to/my/drush
+```
+
+### Fixing the `http://default` URL issue
+
+Some Drush commands output `http://default` instead of your real site URL:
+
+```bash
+lando drush uli
+// http://default/user/reset/1/1548025070/Px6PbLyJ_2laXqoDe6OukHXaX-cXExo4ErfrKbkqsE4/login
+```
+
+This happens because Lando cannot always determine the canonical URL automatically. Fix it by setting `DRUSH_OPTIONS_URI` in your tooling override:
+
+```yaml .lando.yml
+tooling:
+  drush:
+    service: appserver
+    env:
+      DRUSH_OPTIONS_URI: "https://mysite.lndo.site"
+```
+
+Alternatively, set `config.drush_uri` in your recipe config to have Lando set `DRUSH_OPTIONS_URI` automatically:
+
+```yaml .lando.yml
+recipe: drupal11
+config:
+  drush_uri: 'https://mysite.lndo.site'
+```
+
+## Using xdebug
+
+Enable or disable xdebug via `config.xdebug`. When set to `true`, Lando enables and configures the PHP xdebug extension inside the `appserver` container. When set to `false` (the default), the extension is disabled.
+
+```yaml .lando.yml
+recipe: drupal9
+config:
+  xdebug: true
+```
+
+For advanced xdebug configuration, see the [PHP service documentation](https://docs.lando.dev/plugins/php/config.html#using-xdebug).

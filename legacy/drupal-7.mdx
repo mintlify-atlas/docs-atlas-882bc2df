@@ -1,0 +1,241 @@
+---
+title: 'Drupal 7 (EOL): Local Development with Lando Recipe'
+description: 'Run Drupal 7 sites locally with Lando. Covers the drupal7 recipe, PHP 7.4 defaults, Drush 8.5.0 phar, database backends, and EOL upgrade guidance.'
+---
+
+Drupal 7 reached end of life on **January 5, 2025** and no longer receives security updates from the Drupal community. This page documents Lando's `drupal7` recipe for teams still maintaining legacy Drupal 7 sites in local development, and covers PHP compatibility, database options, Drush configuration, and the recommended upgrade path.
+
+<Warning>
+  **Drupal 7 is end of life.** Security support ended on January 5, 2025. Running Drupal 7 in production exposes your site to unpatched vulnerabilities. Plan a migration to [Drupal 10](https://www.drupal.org/docs/upgrading-drupal) or [Drupal 11](https://www.drupal.org/docs/upgrading-drupal) as soon as feasible.
+</Warning>
+
+## Default configuration
+
+The `drupal7` recipe defaults to PHP 7.4, Apache 2.4, and MySQL 5.7:
+
+```yaml
+recipe: drupal7
+config:
+  php: '7.4'
+  via: apache:2.4
+  webroot: .
+  database: mysql:5.7
+  drush: '8.5.0'
+  xdebug: false
+```
+
+The `drupal7` recipe extends the internal `_drupaly` base, inheriting tooling for `composer`, `php`, `drush`, `db-import`, and `db-export`. Drush defaults to `8.5.0` installed as a phar binary (the `DRUSH8` constant from `_drupaly`). When PHP is set to `5.3`, the recipe automatically falls back to Drush `7.4.0` instead.
+
+## Quick start
+
+<Steps>
+  <Step title="Initialize the project">
+    Download Drupal 7 and scaffold a Landofile:
+
+    ```bash
+    mkdir my-first-drupal7-app \
+      && cd my-first-drupal7-app \
+      && lando init \
+        --source remote \
+        --remote-url https://ftp.drupal.org/files/projects/drupal-7.71.tar.gz \
+        --remote-options="--strip-components 1" \
+        --recipe drupal7 \
+        --webroot . \
+        --name my-first-drupal7-app
+    ```
+  </Step>
+  <Step title="Start the environment">
+    ```bash
+    lando start
+    ```
+  </Step>
+  <Step title="Install Drupal">
+    ```bash
+    lando drush si --db-url=mysql://drupal7:drupal7@database/drupal7 -y
+    ```
+  </Step>
+  <Step title="Inspect services">
+    ```bash
+    lando info
+    ```
+  </Step>
+</Steps>
+
+## PHP version
+
+The recipe defaults to PHP `7.4`. Drupal 7 supports PHP 5.6 through 7.4. Override the version in your `.lando.yml`:
+
+```yaml
+recipe: drupal7
+config:
+  php: '7.2'
+```
+
+<Note>
+  When PHP is set to `5.3`, Lando automatically installs **Drush 7.4.0** (phar) instead of Drush 8.5.0 as the default. For PHP 5.6 and above, Drush 8.5.0 is used.
+</Note>
+
+## Database options
+
+The default database is `mysql:5.7`. Switch to MariaDB or PostgreSQL as needed:
+
+<CodeGroup>
+
+```yaml MySQL 5.7 (default)
+recipe: drupal7
+config:
+  database: mysql:5.7
+```
+
+```yaml MariaDB 10.4
+recipe: drupal7
+config:
+  database: mariadb:10.4
+```
+
+```yaml PostgreSQL 13
+recipe: drupal7
+config:
+  database: postgres:13
+```
+
+</CodeGroup>
+
+Database credentials are derived automatically from the recipe name:
+
+| Field    | Value      |
+| -------- | ---------- |
+| Username | `drupal7`  |
+| Password | `drupal7`  |
+| Database | `drupal7`  |
+| Host     | `database` |
+
+## Web server
+
+The recipe defaults to Apache 2.4. Switch to nginx with:
+
+```yaml
+recipe: drupal7
+config:
+  via: nginx
+```
+
+## Using Drush
+
+The `drupal7` recipe installs **Drush 8.5.0** as a phar binary by default. Drush 8 is the last major release with full Drupal 7 support. Run commands with:
+
+```bash
+lando drush <command>
+```
+
+### Customizing the Drush version
+
+<CodeGroup>
+
+```yaml Latest Drush (any version)
+recipe: drupal7
+config:
+  drush: "*"
+```
+
+```yaml Latest Drush 7
+recipe: drupal7
+config:
+  drush: ^7
+```
+
+```yaml Specific Drush 8 version
+recipe: drupal7
+config:
+  drush: 8.1.15
+```
+
+</CodeGroup>
+
+### Site-local Drush
+
+If your `composer.json` requires `drush/drush`, Lando uses that version instead of the globally installed one. Add a build step so Drush is always present before the app starts:
+
+```yaml
+recipe: drupal7
+services:
+  appserver:
+    build:
+      - composer install
+```
+
+To force a specific path when Lando cannot auto-detect your Drush binary:
+
+```yaml
+tooling:
+  drush:
+    cmd: /path/to/my/drush
+```
+
+### Fixing `http://default` in Drush output
+
+Drush commands like `lando drush uli` may output `http://default` instead of your site's real URL. Fix this by adding `$base_url` to your `settings.php`:
+
+```php
+$base_url = "http://mysite.lndo.site:PORT_IF_NEEDED"
+```
+
+Run `lando info` to check whether your URLs use explicit port numbers.
+
+### Drush aliases
+
+Place your alias file inside your app's `drush/` directory:
+
+```
+app/
+└── drush/
+    └── yoursite.aliases.drushrc.php
+```
+
+Then link it with a build step:
+
+```yaml
+services:
+  appserver:
+    build:
+      - mkdir -p ~/.drush/site-aliases
+      - ln -sf /app/drush/yoursite.aliases.drushrc.php ~/.drush/site-aliases/yoursite.drushrc.php
+```
+
+### Configuring the Drush root
+
+If your webroot is not `.`, either `cd` into the webroot before running Drush, or hard-code it in your tooling:
+
+```yaml
+tooling:
+  drush:
+    service: appserver
+    cmd: drush --root=/app/PATH/TO/WEBROOT
+```
+
+<Warning>
+  Hard-coding `--root` can cause unexpected behavior with commands like `drush scr`. Use this override with caution.
+</Warning>
+
+## Xdebug
+
+Xdebug is disabled by default. Enable it with:
+
+```yaml
+recipe: drupal7
+config:
+  xdebug: true
+```
+
+## Upgrade path
+
+Drupal 7 to Drupal 10 is a multi-step migration. The Drupal community provides tooling such as the Migrate API and the Upgrade Status module to assist.
+
+<CardGroup cols={2}>
+  <Card title="Drupal upgrade guide" icon="arrow-up" href="https://www.drupal.org/docs/upgrading-drupal">
+    Official guide covering migration paths from Drupal 7 to current versions.
+  </Card>
+  <Card title="Drupal 7 migration FAQ" icon="circle-question" href="https://www.drupal.org/docs/upgrading-drupal/drupal-7-to-drupal-10-and-beyond">
+    Answers to common questions about migrating Drupal 7 content and configuration.
+  </Card>
+</CardGroup>

@@ -1,0 +1,249 @@
+---
+title: 'Drupal 8 (EOL): Local Development with Lando Recipe'
+description: 'Set up and run Drupal 8 sites locally with Lando. Covers the drupal8 recipe, PHP 7.3 defaults, Drush configuration, and end-of-life upgrade guidance.'
+---
+
+Drupal 8 reached end of life on **November 2, 2021** and no longer receives security updates from the Drupal community. This page documents Lando's `drupal8` recipe for teams maintaining legacy Drupal 8 sites locally, along with everything you need to configure PHP, your database, and Drush.
+
+<Warning>
+  **Drupal 8 is end of life.** It has not received security updates since November 2, 2021. Running Drupal 8 in production exposes your site to unpatched vulnerabilities. Migrate to [Drupal 10](https://www.drupal.org/docs/upgrading-drupal) or [Drupal 11](https://www.drupal.org/docs/upgrading-drupal) as soon as possible.
+</Warning>
+
+## Default configuration
+
+The `drupal8` recipe ships with the following defaults, which match the last widely-used Drupal 8 environment:
+
+```yaml
+recipe: drupal8
+config:
+  php: '7.3'
+  via: apache:2.4
+  webroot: .
+  database: mysql:5.7
+  drush: '8.5.0'
+  xdebug: false
+```
+
+All values are overridable in your `.lando.yml`. The `drupal8` recipe extends the internal `_drupaly` base, so it inherits tooling for `composer`, `php`, `drush`, `db-import`, and `db-export` out of the box.
+
+<Note>
+  Drupal 8 also installs **Drupal Console** and adds a `lando drupal` tooling command mapped to the `appserver` service. Run `lando drupal <command>` to use the Drupal Console CLI inside the container.
+</Note>
+
+## Quick start
+
+<Steps>
+  <Step title="Initialize the project">
+    Download Drupal 8 and scaffold a Landofile in one command:
+
+    ```bash
+    mkdir my-first-drupal8-app \
+      && cd my-first-drupal8-app \
+      && lando init \
+        --source remote \
+        --remote-url https://ftp.drupal.org/files/projects/drupal-8.9.20.tar.gz \
+        --remote-options="--strip-components 1" \
+        --recipe drupal8 \
+        --webroot . \
+        --name my-first-drupal8-app
+    ```
+  </Step>
+  <Step title="Start the environment">
+    ```bash
+    lando start
+    ```
+  </Step>
+  <Step title="Install Drupal">
+    ```bash
+    lando drush si --db-url=mysql://drupal8:drupal8@database/drupal8 -y
+    ```
+  </Step>
+  <Step title="Inspect services">
+    ```bash
+    lando info
+    ```
+  </Step>
+</Steps>
+
+## PHP version
+
+The recipe defaults to PHP `7.3`. Drupal 8 supports PHP 7.0 through 7.4. Override the version in your `.lando.yml`:
+
+```yaml
+recipe: drupal8
+config:
+  php: '7.4'
+```
+
+<Warning>
+  PHP 7.x is also end of life. Upgrading to Drupal 9+ allows you to use PHP 8.x, which receives active security support.
+</Warning>
+
+## Database options
+
+The default database is `mysql:5.7`. You can switch to MariaDB or PostgreSQL:
+
+<CodeGroup>
+
+```yaml MySQL 5.7 (default)
+recipe: drupal8
+config:
+  database: mysql:5.7
+```
+
+```yaml MariaDB 10.4
+recipe: drupal8
+config:
+  database: mariadb:10.4
+```
+
+```yaml PostgreSQL 13
+recipe: drupal8
+config:
+  database: postgres:13
+```
+
+</CodeGroup>
+
+Database credentials are derived from the recipe name. The default credentials for the `drupal8` recipe are:
+
+| Field    | Value      |
+| -------- | ---------- |
+| Username | `drupal8`  |
+| Password | `drupal8`  |
+| Database | `drupal8`  |
+| Host     | `database` |
+
+## Web server
+
+The recipe defaults to Apache 2.4. Switch to nginx if needed:
+
+```yaml
+recipe: drupal8
+config:
+  via: nginx
+```
+
+## Using Drush
+
+By default, the `drupal8` recipe installs Drush `8.5.0` as a **phar-based** binary — the value of the `DRUSH8` constant in the `_drupaly` base. When `config.drush` is set to a specific semver version in the Drush 8 range (e.g. `8.1.15`), Lando downloads the phar directly instead of using Composer. Any version constraint (e.g. `^8` or `*`) is installed via Composer instead.
+
+Run Drush commands with:
+
+```bash
+lando drush <command>
+```
+
+### Customizing the Drush version
+
+<CodeGroup>
+
+```yaml Latest Drush (any version)
+recipe: drupal8
+config:
+  drush: "*"
+```
+
+```yaml Latest Drush 7
+recipe: drupal8
+config:
+  drush: ^7
+```
+
+```yaml Specific Drush 8 version
+recipe: drupal8
+config:
+  drush: 8.1.15
+```
+
+</CodeGroup>
+
+### Site-local Drush
+
+If your `composer.json` requires `drush/drush`, Lando uses that version instead of the globally installed one. This is the recommended approach for Drupal 8 projects:
+
+```yaml
+recipe: drupal8
+services:
+  appserver:
+    build:
+      - composer install
+```
+
+To force a specific path when Lando cannot auto-detect your Drush:
+
+```yaml
+tooling:
+  drush:
+    cmd: /path/to/my/drush
+```
+
+### Fixing `http://default` in Drush output
+
+Drush commands like `lando drush uli` may output `http://default` instead of your real URL. Fix this by setting `DRUSH_OPTIONS_URI` on the appserver:
+
+```yaml
+services:
+  appserver:
+    overrides:
+      environment:
+        DRUSH_OPTIONS_URI: "https://mysite.lndo.site"
+```
+
+Run `lando rebuild` after adding this setting.
+
+### Drush aliases
+
+Place your alias file inside your app's `drush/` directory:
+
+```
+app/
+└── drush/
+    └── yoursite.aliases.drushrc.php
+```
+
+Then link it into the Drush home directory with a build step:
+
+```yaml
+services:
+  appserver:
+    build:
+      - mkdir -p ~/.drush/site-aliases
+      - ln -sf /app/drush/yoursite.aliases.drushrc.php ~/.drush/site-aliases/yoursite.drushrc.php
+```
+
+### Configuring the Drush root
+
+If your webroot is not `.`, either `cd` into the webroot before running Drush commands, or lock the root in your tooling:
+
+```yaml
+tooling:
+  drush:
+    service: appserver
+    cmd: drush --root=/app/PATH/TO/WEBROOT
+```
+
+<Warning>
+  Hard-coding `--root` can cause unexpected behavior with commands like `drush scr`. Use this override with caution.
+</Warning>
+
+## Xdebug
+
+Xdebug is disabled by default. Enable it with:
+
+```yaml
+recipe: drupal8
+config:
+  xdebug: true
+```
+
+## Upgrade path
+
+<CardGroup cols={2}>
+  <Card title="Upgrade to Drupal 9" icon="arrow-up" href="https://www.drupal.org/docs/upgrading-drupal/upgrading-from-drupal-8-to-drupal-9-or-higher">
+    Official Drupal upgrade guide for moving from Drupal 8 to Drupal 9.
+  </Card>
+  <Card title="Upgrade to Drupal 10" icon="arrow-up-right" href="https://www.drupal.org/docs/upgrading-drupal">
+    Full Drupal upgrade documentation covering paths to Drupal 10 and 11.
+  </Card>
+</CardGroup>

@@ -1,0 +1,176 @@
+---
+title: "Database Configuration and Operations in Lando Drupal"
+description: "Connect Drupal to MySQL, MariaDB, or PostgreSQL with per-recipe credentials, and import or export database dumps using lando db-import and db-export."
+---
+
+Each Lando Drupal recipe provisions a database service named `database` with credentials that match the recipe name. The hostname inside the container is always `database` — not `localhost` — because Lando runs your app server and database server as separate Docker containers. This page covers connection credentials, switching backends, importing and exporting data, and version compatibility across Drupal versions.
+
+## Default connection credentials
+
+Lando sets the database name, username, and password to the recipe name automatically. Substitute `drupal11` with your recipe (e.g. `drupal10`, `drupal9`, `drupal7`) if you are using a different version.
+
+```yaml
+database: drupal11
+username: drupal11
+password: drupal11
+host: database
+# MySQL/MariaDB
+port: 3306
+# PostgreSQL
+# port: 5432
+```
+
+<Warning>
+Always use `database` as the host, not `localhost` or `127.0.0.1`. Drupal running inside the `appserver` container must reach the database over the Docker network using the service name.
+</Warning>
+
+The credentials follow the same pattern for every recipe version:
+
+| Recipe | Database name | Username | Password | Host |
+|--------|--------------|----------|----------|------|
+| `drupal11` | `drupal11` | `drupal11` | `drupal11` | `database` |
+| `drupal10` | `drupal10` | `drupal10` | `drupal10` | `database` |
+| `drupal9` | `drupal9` | `drupal9` | `drupal9` | `database` |
+| `drupal8` | `drupal8` | `drupal8` | `drupal8` | `database` |
+| `drupal7` | `drupal7` | `drupal7` | `drupal7` | `database` |
+| `drupal6` | `drupal6` | `drupal6` | `drupal6` | `database` |
+
+## Getting connection details with lando info
+
+Run `lando info` from your project directory to see all connection details, including the forwarded port that lets you connect from a GUI client on your host machine:
+
+```bash
+lando info
+```
+
+The output includes an `internal_connection` block (for use inside containers) and an `external_connection` block (for connecting from your host with tools like TablePlus or Sequel Pro).
+
+## Switching database backends
+
+By default, the recipe uses MySQL. Change `config.database` to switch to MariaDB or PostgreSQL. Specify only the engine name to get the version default for your recipe, or pin an explicit version.
+
+<Tabs>
+  <Tab title="MySQL (default)">
+    ```yaml .lando.yml
+    recipe: drupal11
+    config:
+      database: mysql:8.0
+    ```
+  </Tab>
+  <Tab title="MariaDB">
+    ```yaml .lando.yml
+    recipe: drupal11
+    config:
+      database: mariadb:10.6
+    ```
+  </Tab>
+  <Tab title="PostgreSQL">
+    ```yaml .lando.yml
+    recipe: drupal11
+    config:
+      database: postgres:16
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+Run `lando rebuild` after changing `config.database`. Lando will re-provision the database service with the new backend. Existing data will not be preserved automatically — export before switching.
+</Note>
+
+When using PostgreSQL, `lando mysql` is replaced by `lando psql`. When using MariaDB 10.4 or above, `lando mariadb` is available instead of `lando mysql`. For MariaDB 10.3 and below, the `lando mysql` command is used.
+
+## Version compatibility by Drupal version
+
+Each recipe resolves database version defaults from Drupal's official [database server requirements](https://www.drupal.org/docs/getting-started/system-requirements). The table below shows what the recipe sets when you specify only the engine name:
+
+| Recipe | MySQL default | MariaDB default | PostgreSQL default |
+|--------|--------------|-----------------|-------------------|
+| `drupal11` | `8.0` | `10.6` | `16` |
+| `drupal10` | `5.7` | `10.3` | `12` |
+| `drupal9` | `5.7` | `10.3` | `10` |
+| `drupal7` | `5.7` (inherited) | `5.7` (inherited) | — |
+| `drupal6` | `5.7` (inherited) | `5.7` (inherited) | — |
+
+<Tip>
+You can pin any version that the corresponding [Lando MySQL](https://docs.lando.dev/plugins/mysql/index.html), [MariaDB](https://docs.lando.dev/plugins/mariadb/index.html), or [PostgreSQL](https://docs.lando.dev/plugins/postgres/index.html) service supports, as long as it meets Drupal's requirements.
+</Tip>
+
+## Importing a database
+
+Use `lando db-import` to load a dump file into your database service. The file must exist somewhere inside your application directory (Docker's file sharing requirement). Lando handles `.sql`, `.sql.gz`, and `.zip` formats automatically.
+
+```bash
+# Download a dump
+curl -fsSL -o database.sql.gz "https://url.to.my.db/database.sql.gz"
+
+# Import the dump — Lando detects the compression automatically
+lando db-import database.sql.gz
+```
+
+By default, `lando db-import` destroys the existing database before importing. Pass `--no-wipe` to skip that step:
+
+```bash
+lando db-import database.sql.gz --no-wipe
+```
+
+If you have multiple database services, target a specific one with `--host`:
+
+```bash
+lando db-import database.sql.gz --host my-other-db
+```
+
+<Note>
+Learn more about `db-import` options in the [Lando db-import guide](https://docs.lando.dev/guides/db-import.html).
+</Note>
+
+## Exporting a database
+
+Use `lando db-export` to dump your database to a file. By default, the command creates a compressed `.sql.gz` file in your project directory.
+
+```bash
+# Export to a default timestamped file
+lando db-export
+
+# Export to a named file
+lando db-export my-backup.sql.gz
+
+# Dump to stdout (useful for piping)
+lando db-export --stdout
+```
+
+## Connecting from a database GUI
+
+Because Lando port-forwards your database to your host machine, you can connect from any database GUI (TablePlus, Sequel Pro, DBeaver, pgAdmin, etc.).
+
+<Steps>
+  <Step title="Get the external port">
+    Run `lando info` and look for the `external_connection` block under the `database` service. The `port` value is the host-side port forwarded from the container.
+  </Step>
+  <Step title="Configure your GUI client">
+    Use these settings in your GUI:
+
+    ```yaml
+    host: 127.0.0.1
+    port: <port from lando info>
+    database: drupal11    # or drupalX for your version
+    username: drupal11
+    password: drupal11
+    ```
+  </Step>
+  <Step title="Connect">
+    Save the connection and connect. The port may change between `lando start` sessions if it is dynamically assigned.
+  </Step>
+</Steps>
+
+## Using a custom database config file
+
+Override the default MySQL or MariaDB config with your own `.cnf` file, or supply a custom PostgreSQL config:
+
+```yaml .lando.yml
+recipe: drupal11
+config:
+  config:
+    database: config/my-custom.cnf
+```
+
+The plugin ships two MySQL config files by default — `mysql.cnf` for MySQL 5.x and `mysql8.cnf` for MySQL 8.x — and selects the correct one automatically based on the version you configure. You can find the defaults in the plugin repository under `config/drupal11/`.

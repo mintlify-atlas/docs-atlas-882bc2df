@@ -1,0 +1,163 @@
+---
+title: "Set Up Drupal CMS for Local Development with Lando"
+description: Learn how to set up a full Drupal CMS local development environment using Lando, from project scaffolding through Composer install to your first login.
+---
+
+Drupal CMS is a product built on Drupal 11 that targets marketers, designers, and content creators with smart defaults, pre-configured recipes, and AI-powered site-building features. This guide walks you through every step needed to run it locally with Lando, ending with a working browser session on your machine.
+
+<Tip>
+**Quick install (experienced users)**
+
+If you already have Lando installed and just want the commands, here they are in full:
+
+<CodeGroup>
+
+```bash Bash
+# Prompt for app name (or change this line to set it directly)
+read -p "Enter your app name [my-drupalcms-app]: " APP_NAME
+APP_NAME=${APP_NAME:-my-drupalcms-app}  # Default if no input provided
+
+# Create and initialize project
+mkdir $APP_NAME \
+  && cd $APP_NAME \
+  && lando init \
+    --source cwd \
+    --recipe drupal11 \
+    --webroot web \
+    --name $APP_NAME
+
+# Start environment and install Drupal CMS
+lando start
+lando composer create-project drupal/cms tmp && cp -r tmp/. . && rm -rf tmp
+lando drush site:install recipes/drupal_cms_starter --db-url=mysql://drupal11:drupal11@database/drupal11 -y
+
+# Get site URL to login
+lando drush user:login /admin/dashboard/welcome --uri="$(lando info -s appserver --path 'urls[1]' | tr -d '\n' | tr -d "'")"
+```
+
+```powershell PowerShell
+# Prompt for app name (or change this line to set it directly)
+$APP_NAME = Read-Host "Enter your app name [my-drupalcms-app]: "
+if ([string]::IsNullOrWhiteSpace($APP_NAME)) { $APP_NAME = "my-drupalcms-app" }
+
+# Create and initialize project
+mkdir $APP_NAME; `
+cd $APP_NAME; `
+lando init `
+  --source cwd `
+  --recipe drupal11 `
+  --webroot web `
+  --name $APP_NAME
+
+# Start environment and install Drupal CMS
+lando start
+lando composer create-project drupal/cms tmp; cp -r tmp/* .; rm -rf tmp
+lando drush site:install recipes/drupal_cms_starter --db-url=mysql://drupal11:drupal11@database/drupal11 -y
+
+# Get the login link
+lando drush user:login /admin/dashboard/welcome --uri="$(lando info -s appserver --path 'urls[1]' | tr -d '\n' | tr -d "'")"
+```
+
+</CodeGroup>
+</Tip>
+
+## Prerequisites
+
+Before starting you will need:
+
+- [Lando installed on your system](https://docs.lando.dev/getting-started/installation.html)
+- Basic familiarity with the command line
+- A terminal application
+
+## Installation
+
+<Steps>
+  <Step title="Create and enter the project directory">
+    Create a new directory for your Drupal CMS project files and navigate into it:
+
+    ```bash
+    mkdir my-drupalcms-app
+    cd my-drupalcms-app
+    ```
+  </Step>
+
+  <Step title="Initialize a new Lando app with the Drupal 11 recipe">
+    Use `lando init` to generate a `.lando.yml` configuration file. The `drupal11` recipe matches the Drupal version that Drupal CMS is built on. The `--webroot web` flag tells Lando where Composer will place the Drupal files:
+
+    ```bash
+    lando init \
+      --source cwd \
+      --recipe drupal11 \
+      --webroot web \
+      --name my-drupalcms-app
+    ```
+  </Step>
+
+  <Step title="Start the Lando environment">
+    Boot the development environment. The first run downloads and configures all required containers, so expect this to take a few minutes:
+
+    ```bash
+    lando start
+    ```
+  </Step>
+
+  <Step title="Install project files via Composer">
+    With the environment running, use Composer inside Lando to download the Drupal CMS project files. The commands below install into a temporary directory and then move everything into the project root to avoid Composer's restriction on non-empty target directories:
+
+    ```bash
+    lando composer create-project drupal/cms tmp && cp -r tmp/. . && rm -rf tmp
+    ```
+  </Step>
+
+  <Step title="Install Drupal">
+    Run Drush's `site:install` command to create the database, run migrations, and configure Drupal CMS with its starter recipe. The `--db-url` flag uses the credentials that Lando's `drupal11` recipe provisions by default:
+
+    ```bash
+    lando drush site:install recipes/drupal_cms_starter --db-url=mysql://drupal11:drupal11@database/drupal11 -y
+    ```
+  </Step>
+</Steps>
+
+## Post-installation
+
+Generate a one-time login link to access the admin dashboard:
+
+```bash
+lando drush user:login /admin/dashboard/welcome --uri="$(lando info -s appserver --path 'urls[1]' | tr -d '\n' | tr -d "'")"
+```
+
+Copy the URL from the output and open it in your browser. From there you can explore:
+
+- The dashboard
+- Content management tools
+- Built-in SEO tools
+- Smart default recipes for common functionality
+- AI tools for site administrators and content creators
+
+## Customizing your setup
+
+The Lando Drupal plugin lets you adjust the environment to match your project requirements. Configurable options include:
+
+- PHP version
+- Web server (Apache or Nginx)
+- Database backend (MySQL, MariaDB, or PostgreSQL)
+- Composer version
+
+See the [Lando Drupal plugin configuration docs](https://docs.lando.dev/plugins/drupal/config.html) for the full list of options.
+
+## Starting and stopping
+
+| Command | Effect |
+|---|---|
+| `lando stop` | Stop the environment |
+| `lando start` | Start a stopped environment |
+| `lando rebuild` | Rebuild with the latest configuration |
+
+## Troubleshooting
+
+If you run into problems during installation:
+
+- Run `lando rebuild -y` to rebuild with the latest configuration.
+- Check Lando's [troubleshooting guide](https://docs.lando.dev/help/troubleshooting.html).
+- Ask in the [Lando Slack community](https://www.launchpass.com/devwithlando).
+- Consult the [Drupal CMS documentation](https://drupal.org/docs/drupal-cms) for Drupal-specific issues.

@@ -1,0 +1,199 @@
+---
+title: 'Drupal 6 (EOL): Local Development with Lando Recipe'
+description: 'Run Drupal 6 sites locally with Lando. Covers the drupal6 recipe, PHP 5.6 defaults, pinned Drush 8.4.5, database options, and end-of-life upgrade guidance.'
+---
+
+Drupal 6 reached end of life on **February 24, 2016** and has not received security updates or community support for nearly a decade. This page documents Lando's `drupal6` recipe for teams who still need to run very old Drupal 6 sites in a local environment, including the specific Drush version required for a working `drush site-install`.
+
+<Warning>
+  **Drupal 6 is severely end of life.** Security support ended in February 2016. No patches, no security fixes, and no community support exist for Drupal 6. Any Drupal 6 site still running in production is at high risk. Migrate to [Drupal 10](https://www.drupal.org/docs/upgrading-drupal) or [Drupal 11](https://www.drupal.org/docs/upgrading-drupal) immediately.
+</Warning>
+
+## Default configuration
+
+The `drupal6` recipe defaults to PHP 5.6 and pins Drush to version `8.4.5`:
+
+```yaml
+recipe: drupal6
+config:
+  php: '5.6'
+  via: apache:2.4
+  webroot: .
+  database: mysql:5.7
+  drush: '8.4.5'
+  xdebug: false
+```
+
+<Note>
+  Drush `8.4.5` is pinned as the default because it is the last known Drush 8 version where `drush si -y` completes successfully against Drupal 6. See the [upstream issue](https://github.com/drush-ops/drush/issues/218#issuecomment-2580619527) for background. Because this is a concrete semver Drush 8 version, Lando installs it as a **phar binary** rather than via Composer.
+</Note>
+
+The `drupal6` recipe extends the internal `_drupaly` base, inheriting tooling for `composer`, `php`, `drush`, `db-import`, and `db-export`.
+
+## Quick start
+
+<Steps>
+  <Step title="Initialize the project">
+    Download Drupal 6 and scaffold a Landofile:
+
+    ```bash
+    mkdir my-first-drupal6-app \
+      && cd my-first-drupal6-app \
+      && lando init \
+        --source remote \
+        --remote-url https://ftp.drupal.org/files/projects/drupal-6.38.tar.gz \
+        --remote-options="--strip-components 1" \
+        --recipe drupal6 \
+        --webroot . \
+        --name my-first-drupal6-app
+    ```
+  </Step>
+  <Step title="Start the environment">
+    ```bash
+    lando start
+    ```
+  </Step>
+  <Step title="Install Drupal">
+    ```bash
+    lando drush si --db-url=mysql://drupal6:drupal6@database/drupal6 -y
+    ```
+  </Step>
+  <Step title="Inspect services">
+    ```bash
+    lando info
+    ```
+  </Step>
+</Steps>
+
+## PHP version
+
+The recipe defaults to PHP `5.6`, which is the highest PHP version supported by Drupal 6. Override it in your `.lando.yml` if you need an older patch:
+
+```yaml
+recipe: drupal6
+config:
+  php: '5.6'
+```
+
+<Warning>
+  PHP 5.6 reached end of life on December 31, 2018. Using PHP 5.6 in production is a significant security risk independent of the Drupal 6 EOL status.
+</Warning>
+
+## Database options
+
+The default database is `mysql:5.7`. Drupal 6 also supports MariaDB and PostgreSQL:
+
+<CodeGroup>
+
+```yaml MySQL 5.7 (default)
+recipe: drupal6
+config:
+  database: mysql:5.7
+```
+
+```yaml MariaDB 10.3
+recipe: drupal6
+config:
+  database: mariadb:10.3
+```
+
+```yaml PostgreSQL 9.6
+recipe: drupal6
+config:
+  database: postgres:9.6
+```
+
+</CodeGroup>
+
+Database credentials are derived automatically from the recipe name:
+
+| Field    | Value      |
+| -------- | ---------- |
+| Username | `drupal6`  |
+| Password | `drupal6`  |
+| Database | `drupal6`  |
+| Host     | `database` |
+
+## Web server
+
+The recipe defaults to Apache 2.4. Switch to nginx with:
+
+```yaml
+recipe: drupal6
+config:
+  via: nginx
+```
+
+## Using Drush
+
+The `drupal6` recipe pins Drush to **`8.4.5`** and installs it as a phar binary. This specific version is required because newer Drush 8 releases have a known incompatibility with `drush site-install` on Drupal 6.
+
+Run commands with:
+
+```bash
+lando drush <command>
+```
+
+### Customizing the Drush version
+
+You can override the Drush version, but be aware that versions above `8.4.5` may break `drush si`:
+
+<CodeGroup>
+
+```yaml Latest Drush (not recommended for Drupal 6)
+recipe: drupal6
+config:
+  drush: "*"
+```
+
+```yaml Latest Drush 7
+recipe: drupal6
+config:
+  drush: ^7
+```
+
+```yaml Pinned Drush 8.4.5 (recommended)
+recipe: drupal6
+config:
+  drush: 8.4.5
+```
+
+</CodeGroup>
+
+### Configuring the Drush root
+
+If your webroot is not `.`, either `cd` into the webroot before running Drush commands, or hard-code the root in your tooling:
+
+```yaml
+tooling:
+  drush:
+    service: appserver
+    cmd: drush --root=/app/PATH/TO/WEBROOT
+```
+
+<Warning>
+  Hard-coding `--root` can cause unexpected behavior with commands like `drush scr`. Use this override with caution.
+</Warning>
+
+## Xdebug
+
+Xdebug is disabled by default. Enable it with:
+
+```yaml
+recipe: drupal6
+config:
+  xdebug: true
+```
+
+## Upgrade path
+
+Migrating from Drupal 6 to a current Drupal version requires a multi-step process. Content can typically be migrated using the Drupal Migrate API, though the path is more complex than Drupal 7-to-10 migrations.
+
+<CardGroup cols={2}>
+  <Card title="Drupal upgrade guide" icon="arrow-up" href="https://www.drupal.org/docs/upgrading-drupal">
+    Official Drupal documentation covering migration paths to current versions.
+  </Card>
+  <Card title="Drupal 6 long-term support" icon="shield" href="https://www.drupal.org/project/d6lts">
+    The Drupal 6 LTS community project, which backports some critical fixes for sites that cannot yet migrate.
+  </Card>
+</CardGroup>

@@ -1,0 +1,80 @@
+---
+title: "Lando Drupal Plugin: Overview and Supported Versions"
+description: "The official @lando/drupal plugin integrates Drupal 6 through 11 with Lando, giving you a fully containerized local development environment."
+---
+
+The `@lando/drupal` plugin is the official [Lando](https://lando.dev) integration for [Drupal](https://www.drupal.org/). It provides dedicated recipes for every supported Drupal version — from the legacy Drupal 6 through the current Drupal 11 — so you can spin up a fully containerized local environment without installing PHP, Composer, or a database server globally on your machine.
+
+## Supported Drupal versions
+
+The plugin ships recipes for the following Drupal versions:
+
+| Recipe | Drupal version | Status |
+|---|---|---|
+| `drupal11` | Drupal 11 | Supported |
+| `drupal10` | Drupal 10 | Supported |
+| `drupal9` | Drupal 9 | Supported |
+| `drupal8` | Drupal 8 | Legacy (EOL) |
+| `drupal7` | Drupal 7 | Legacy (EOL) |
+| `drupal6` | Drupal 6 | Legacy (EOL) |
+
+<Note>
+Drupal 8, 7, and 6 are end-of-life and no longer receive upstream security updates. Their Lando recipes are maintained for legacy use only. See the [Legacy Versions](/legacy/drupal-8) section for details.
+</Note>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Multi-version support" icon="layer-group">
+    Dedicated recipes for Drupal 6, 7, 8, 9, 10, and 11. Switch between versions by changing one line in your `.lando.yml`.
+  </Card>
+  <Card title="Flexible PHP" icon="php">
+    Configure any PHP version from 5.3 through 8.4+. Each Drupal recipe ships with a sensible default (e.g. PHP 8.3 for Drupal 11).
+  </Card>
+  <Card title="Choice of web server" icon="server">
+    Run `apache:2.4` or `nginx`. The web server is configurable per project in your Landofile.
+  </Card>
+  <Card title="Multiple database backends" icon="database">
+    Use MySQL, MariaDB, or PostgreSQL as your database service. Each Drupal version maps to appropriate default database versions.
+  </Card>
+  <Card title="Drush and Composer" icon="terminal">
+    Run `lando drush` and `lando composer` directly inside the container — no global installs required.
+  </Card>
+  <Card title="xdebug support" icon="bug">
+    Enable step-through debugging with a single `xdebug: true` option in your Landofile config.
+  </Card>
+  <Card title="Database import and export" icon="arrow-right-arrow-left">
+    Use `lando db-import` and `lando db-export` to move database dumps in and out of the environment.
+  </Card>
+  <Card title="Custom config files" icon="file-code">
+    Override the default `php.ini`, virtual host, and database config files with your own versions.
+  </Card>
+</CardGroup>
+
+## How it works
+
+The plugin builds on top of Lando, which uses Docker and Docker Compose to orchestrate containers. When you run `lando start`, Lando reads your `.lando.yml`, picks the appropriate `drupal*` recipe, and starts the configured set of services — a PHP appserver, a database, and optionally a separate nginx container.
+
+A minimal Drupal 11 Landofile looks like this:
+
+```yaml .lando.yml
+name: my-cms
+recipe: drupal11
+config:
+  php: '8.3'
+  via: apache:2.4
+  database: mysql:8.0
+```
+
+All services are destroyed and recreated cleanly with `lando destroy` and `lando start`, making it straightforward to reset your local environment to a known state.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Getting started" icon="rocket" href="/getting-started">
+    Run the quick-start commands to spin up your first Drupal site with Lando.
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Install Lando and the `@lando/drupal` plugin on your machine.
+  </Card>
+</CardGroup>

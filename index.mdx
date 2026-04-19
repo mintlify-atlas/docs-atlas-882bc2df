@@ -1,97 +1,78 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Lando Drupal Plugin: Containerized Local Drupal Dev"
+description: "The official Lando plugin for Drupal. Spin up local Drupal 6–11 environments with configurable PHP, databases, Drush, Composer, and xdebug in minutes."
 ---
 
-## Setting up
+The Lando Drupal plugin is the official integration between [Lando](https://lando.dev) and [Drupal](https://www.drupal.org/), giving you a fully containerized local development environment with zero global dependency management. Choose your Drupal version, PHP version, web server, and database backend — all from a single `.lando.yml` file.
 
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Getting Started" icon="rocket" href="/getting-started">
+    Spin up a new Drupal site or Landoify an existing project in a few commands.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Installation" icon="download" href="/installation">
+    Install the Lando Drupal plugin and get your environment ready.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Configuration" icon="sliders" href="/configuration">
+    Configure PHP version, web server, database, Drush, Composer, and xdebug.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Tooling" icon="wrench" href="/tooling">
+    Use built-in lando commands for Drush, Composer, PHP, and database operations.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What the plugin provides
 
-Everything you need to create world-class documentation.
+The Lando Drupal plugin configures a complete local stack for Drupal development — no need to install PHP, Composer, or a database server on your machine.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
+<CardGroup cols={2}>
+  <Card title="Multi-version support" icon="layer-group">
+    Supports Drupal 6, 7, 8, 9, 10, and 11 via dedicated recipes.
   </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
+  <Card title="Flexible PHP" icon="php">
+    Choose any PHP version from 5.3 through 8.4+.
   </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
+  <Card title="Multiple databases" icon="database">
+    Use MySQL, MariaDB, or PostgreSQL as your database backend.
   </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
+  <Card title="Built-in tooling" icon="terminal">
+    Run `lando drush`, `lando composer`, `lando php`, and database shell commands.
   </Card>
-</Columns>
+  <Card title="xdebug support" icon="bug">
+    Enable xdebug with a single config option for step-through debugging.
+  </Card>
+  <Card title="Custom config" icon="file-code">
+    Override default PHP, server, vhosts, and database config files.
+  </Card>
+</CardGroup>
 
-## Need inspiration?
+## Quick example
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+Add a recipe to your `.lando.yml` and start developing:
+
+```yaml .lando.yml
+name: my-drupal-site
+recipe: drupal11
+config:
+  php: '8.3'
+  via: apache:2.4
+  database: mysql:8.0
+```
+
+Then run `lando start` and your Drupal environment is ready.
+
+## Guides
+
+<CardGroup cols={2}>
+  <Card title="Install Drupal CMS" icon="sparkles" href="/guides/drupal-cms">
+    Set up the new Drupal CMS product locally with Lando.
+  </Card>
+  <Card title="Drupal Multisite" icon="sitemap" href="/guides/drupal-multisite">
+    Run multiple Drupal installs from a shared codebase.
+  </Card>
+  <Card title="Landoify Drupal 7" icon="rotate-left" href="/guides/landoify-drupal7">
+    Add Lando to an existing Drupal 7 project.
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/development">
+    Learn how to develop, test, and contribute to the plugin.
+  </Card>
+</CardGroup>
